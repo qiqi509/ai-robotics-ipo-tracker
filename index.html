@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI & Robotics IPO Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">IPO</div>
+        <div class="logo-text">
+          <h1>AI & Robotics IPO Tracker</h1>
+          <span class="logo-sub">Powered by Hacker News</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input id="search" type="text" placeholder="Search IPO news…" autocomplete="off" />
+        </div>
+        <button id="refresh-btn" class="icon-btn" title="Refresh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="filters-bar">
+    <div class="filters" id="filters"></div>
+  </div>
+
+  <main>
+    <div class="status-bar" id="status-bar">
+      <span id="last-updated"></span>
+      <span id="article-count"></span>
+    </div>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Fetching AI & Robotics IPO news…</p>
+    </div>
+
+    <div id="error" class="error hidden">
+      <div class="error-icon">⚠</div>
+      <p>Failed to load news.</p>
+      <button id="retry-btn" class="retry-btn">Try Again</button>
+    </div>
+
+    <div id="news-grid" class="news-grid hidden"></div>
+
+    <div id="no-results" class="no-results hidden">
+      <p>No articles found for "<span id="no-results-query"></span>"</p>
+    </div>
+  </main>
+
+  <footer>
+    <p>Auto-refreshes every 30 min &middot; Data from <a href="https://news.ycombinator.com" target="_blank" rel="noopener">Hacker News</a></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
