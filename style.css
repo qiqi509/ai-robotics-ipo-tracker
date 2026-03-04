@@ -269,6 +269,10 @@ main {
 }
 
 .error-icon { font-size: 2rem; }
+.error-sub  { font-size: 0.8rem; }
+.error-sub a { color: var(--accent2); }
+.error-sub code { background: var(--bg3); border-radius: 4px; padding: 1px 6px; font-size: 0.8rem; }
+.error-detail { font-size: 0.72rem; color: var(--text2); font-family: monospace; }
 
 .retry-btn {
   background: var(--accent);
@@ -340,61 +344,82 @@ main {
   flex-shrink: 0;
 }
 
-.card-time {
-  font-size: 0.73rem;
-  color: var(--text2);
+.card-ticker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--accent2);
+  background: rgba(124,111,255,0.1);
+  border: 1px solid rgba(124,111,255,0.2);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+/* ── Date Row ─────────────────────────────────────────────────────── */
+.card-date-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
+.card-date svg {
+  width: 14px;
+  height: 14px;
+  color: var(--accent2);
   flex-shrink: 0;
 }
 
-.card-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  line-height: 1.45;
-  color: var(--text);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+/* ── Countdown ────────────────────────────────────────────────────── */
+.countdown {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
 }
 
-.card-title a:hover { color: var(--accent2); }
+.countdown-hot  { background: rgba(52,211,153,0.15);  color: var(--green);  border: 1px solid rgba(52,211,153,0.3);  }
+.countdown-soon { background: rgba(251,146,60,0.15);  color: var(--orange); border: 1px solid rgba(251,146,60,0.3);  }
+.countdown-far  { background: rgba(255,255,255,0.05); color: var(--text2);  border: 1px solid var(--border);         }
+.countdown-tbd  { background: rgba(255,255,255,0.05); color: var(--text2);  border: 1px solid var(--border);         }
+
+/* ── Card Title & Meta ────────────────────────────────────────────── */
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text);
+}
 
 .card-meta {
   display: flex;
   align-items: center;
-  gap: 14px;
-  font-size: 0.75rem;
-  color: var(--text2);
-  margin-top: auto;
+  gap: 6px;
   flex-wrap: wrap;
+  margin-top: auto;
 }
 
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.meta-item svg { width: 13px; height: 13px; opacity: 0.7; }
-
-.card-source {
-  margin-left: auto;
-  font-size: 0.7rem;
+.meta-chip {
+  font-size: 0.72rem;
   color: var(--text2);
   background: var(--bg3);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 2px 8px;
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.card-comments-link {
-  color: var(--text2);
-  transition: color 0.15s;
-}
-.card-comments-link:hover { color: var(--accent2); }
 
 /* Badge colors per category */
 .badge-all    { background: rgba(124,111,255,0.15); color: var(--accent2); }

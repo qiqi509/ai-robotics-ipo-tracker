@@ -1,190 +1,180 @@
 /* ── Config ─────────────────────────────────────────────────────────── */
-const HN_API   = 'https://hn.algolia.com/api/v1/search';
-const CACHE_KEY = 'ipo_news_v1';
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-const REFRESH_INTERVAL = 30 * 60 * 1000;
+const CACHE_KEY        = 'ipo_calendar_v3';
+const CACHE_TTL        = 60 * 60 * 1000; // 1 hour
+const REFRESH_INTERVAL = 60 * 60 * 1000;
 
-// Keywords that confirm a story is IPO/market relevant
-const IPO_KEYWORDS = [
-  'ipo', 'initial public offering', 'going public', 'public offering',
-  's-1', 'spac', 'stock', 'nasdaq', 'nyse', 'valuation', 'shares',
-  'market cap', 'funding', 'raise', 'raised', 'billion', 'listing',
-  'pre-ipo', 'roadshow', 'invest', 'acquisition', 'merger', 'deal',
+// AI/Robotics keyword detection against company name
+const AI_KEYWORDS = [
+  'ai ', ' ai', '.ai', 'artificial', 'intelligence', 'neural', 'cognitive',
+  'machine', 'learning', 'language', 'vision', 'deep', 'predictive',
+  'algorithm', 'intelligent', 'automat', 'analytics', 'data', 'cloud',
+  'cyber', 'tech', 'software', 'digital', 'compute', 'quantum', 'semiconductor',
+  'chip', 'gpu', 'sensing', 'saas', 'platform',
+];
+const ROBOT_KEYWORDS = [
+  'robot', 'robotic', 'drone', 'actuator', 'mechatron', 'humanoid',
+  'automation', 'autonomous', 'mobility', 'lidar', 'vehicle',
 ];
 
 const CATEGORIES = [
-  {
-    id: 'all', label: '✦ All IPOs',
-    badgeClass: 'badge-all', badgeText: 'IPO',
-  },
-  {
-    id: 'ai', label: '🤖 AI Companies',
-    badgeClass: 'badge-llm', badgeText: 'AI Co.',
-    keywords: [
-      'openai', 'anthropic', 'xai', 'x.ai', 'mistral', 'cohere', 'scale ai',
-      'databricks', 'perplexity', 'stability ai', 'hugging face', 'inflection',
-      'aleph alpha', 'adept', 'jasper', 'writer', 'ai21', 'together ai',
-    ],
-  },
-  {
-    id: 'robotics', label: '🦾 Robotics Companies',
-    badgeClass: 'badge-robot', badgeText: 'Robotics',
-    keywords: [
-      'figure', 'boston dynamics', '1x technologies', 'agility robotics',
-      'apptronik', 'physical intelligence', 'optimus', 'humanoid robot',
-      'autonomous robot', 'spot robot', 'unitree', 'sanctuary ai',
-      'robotics company', 'robot startup',
-    ],
-  },
-  {
-    id: 'upcoming', label: '📅 Upcoming IPOs',
-    badgeClass: 'badge-research', badgeText: 'Upcoming',
-    keywords: [
-      's-1', 'plans to go public', 'preparing ipo', 'pre-ipo', 'roadshow',
-      'filing', 'confidential filing', 'upcoming ipo', 'expected ipo',
-    ],
-  },
-  {
-    id: 'market', label: '📈 Market & Valuation',
-    badgeClass: 'badge-ml', badgeText: 'Market',
-    keywords: [
-      'valuation', 'market cap', 'shares', 'nasdaq', 'nyse', 'stock price',
-      'earnings', 'revenue', 'profit', 'quarterly', 'analyst', 'investor',
-    ],
-  },
-  {
-    id: 'funding', label: '💰 Funding Rounds',
-    badgeClass: 'badge-tools', badgeText: 'Funding',
-    keywords: [
-      'series a', 'series b', 'series c', 'series d', 'seed round',
-      'venture capital', 'raised', 'funding round', 'investment', 'raise',
-    ],
-  },
-  {
-    id: 'spac', label: '🔀 SPAC & M&A',
-    badgeClass: 'badge-safety', badgeText: 'SPAC/M&A',
-    keywords: [
-      'spac', 'special purpose acquisition', 'blank check', 'merger',
-      'acquisition', 'acquire', 'takeover', 'buyout', 'deal',
-    ],
-  },
+  { id: 'all',      label: '✦ All Upcoming', badgeClass: 'badge-all',    badgeText: 'IPO'    },
+  { id: 'ai',       label: '🤖 AI & Tech',   badgeClass: 'badge-llm',    badgeText: 'AI'     },
+  { id: 'robotics', label: '🦾 Robotics',     badgeClass: 'badge-robot',  badgeText: 'Robot'  },
+  { id: 'soon',     label: '🔥 This Week',    badgeClass: 'badge-vision', badgeText: 'Soon'   },
+  { id: 'filed',    label: '📋 Filed / TBD',  badgeClass: 'badge-ml',     badgeText: 'Filed'  },
 ];
 
 /* ── State ─────────────────────────────────────────────────────────── */
-let allArticles   = [];
+let allIPOs        = [];
 let activeCategory = 'all';
-let searchQuery   = '';
-let refreshTimer  = null;
+let searchQuery    = '';
+let refreshTimer   = null;
 
 /* ── DOM Refs ──────────────────────────────────────────────────────── */
-const $grid       = document.getElementById('news-grid');
-const $loading    = document.getElementById('loading');
-const $error      = document.getElementById('error');
-const $noResults  = document.getElementById('no-results');
-const $noQuery    = document.getElementById('no-results-query');
-const $filters    = document.getElementById('filters');
-const $search     = document.getElementById('search');
-const $refreshBtn = document.getElementById('refresh-btn');
-const $lastUpdated = document.getElementById('last-updated');
+const $grid         = document.getElementById('news-grid');
+const $loading      = document.getElementById('loading');
+const $error        = document.getElementById('error');
+const $errorMsg     = document.getElementById('error-msg');
+const $noResults    = document.getElementById('no-results');
+const $noQuery      = document.getElementById('no-results-query');
+const $filters      = document.getElementById('filters');
+const $search       = document.getElementById('search');
+const $refreshBtn   = document.getElementById('refresh-btn');
+const $lastUpdated  = document.getElementById('last-updated');
 const $articleCount = document.getElementById('article-count');
 
-/* ── Time Helpers ──────────────────────────────────────────────────── */
-function timeAgo(unixTs) {
-  const diff = Date.now() / 1000 - unixTs;
-  if (diff < 60)   return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+/* ── Date Helpers ──────────────────────────────────────────────────── */
+// Nasdaq returns "M/D/YYYY" e.g. "3/10/2026"
+function parseNasdaqDate(str) {
+  if (!str || str === 'N/A' || str === '--' || str === 'Pending') return null;
+  const p = str.split('/');
+  if (p.length === 3) {
+    const d = new Date(+p[2], +p[0] - 1, +p[1]);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function formatDate(date) {
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function daysUntil(date) {
+  if (!date) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const t = new Date(date); t.setHours(0, 0, 0, 0);
+  return Math.round((t - today) / 86400000);
 }
 
 function formatNow() {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-/* ── IPO Relevance Filter ──────────────────────────────────────────── */
-function isIpoRelevant(hit) {
-  const text = `${hit.title} ${hit.url || ''}`.toLowerCase();
-  return IPO_KEYWORDS.some(k => text.includes(k));
-}
-
 /* ── Category Detection ────────────────────────────────────────────── */
-function detectCategory(article) {
-  const text = `${article.title} ${article.url || ''}`.toLowerCase();
-  for (const cat of CATEGORIES) {
-    if (cat.id === 'all') continue;
-    if (cat.keywords && cat.keywords.some(k => text.includes(k))) return cat;
-  }
-  return CATEGORIES[0]; // fallback: "All IPOs"
+function detectCategory(name = '') {
+  const n = ` ${name.toLowerCase()} `;
+  if (ROBOT_KEYWORDS.some(k => n.includes(k))) return 'robotics';
+  if (AI_KEYWORDS.some(k => n.includes(k))) return 'ai';
+  return 'other';
 }
 
 /* ── Fetch ─────────────────────────────────────────────────────────── */
-async function fetchQuery(query) {
-  const url = `${HN_API}?query=${encodeURIComponent(query)}&tags=story&hitsPerPage=50&numericFilters=points>5`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  return data.hits || [];
+function getMonths() {
+  const months = [];
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  return months;
 }
 
-async function fetchAllNews() {
-  const queries = [
-    'AI IPO initial public offering',
-    'robotics IPO stock market',
-    'OpenAI IPO valuation',
-    'Anthropic IPO public offering',
-    'AI startup funding billion valuation',
-    'robotics company funding raise',
-    'AI company SPAC merger acquisition',
-    'tech IPO 2025 artificial intelligence',
-    'humanoid robot company stock',
-    'AI unicorn going public',
-  ];
+async function fetchMonth(yearMonth) {
+  const res = await fetch(`/api/ipo?date=${yearMonth}`);
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  return res.json();
+}
 
-  const results = await Promise.allSettled(queries.map(q => fetchQuery(q)));
+function parseResponse(json) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const ipos = [];
+  const d = json?.data;
+  if (!d) return ipos;
+
+  // Upcoming: confirmed pricing date in the future
+  const upRows = d.upcoming?.upcomingTable?.rows || [];
+  for (const row of upRows) {
+    const date = parseNasdaqDate(row.expectedPriceDate);
+    if (!date || date < today) continue;
+    ipos.push({
+      id:        row.dealID,
+      name:      row.companyName || '',
+      ticker:    row.proposedTickerSymbol || '—',
+      exchange:  row.proposedExchange || '',
+      date,
+      status:    'upcoming',
+      priceRange: row.proposedSharePrice || null,
+      offerAmt:   row.dollarValueOfSharesOffered || null,
+      shares:     row.sharesOffered || null,
+      category:  detectCategory(row.companyName),
+    });
+  }
+
+  // Filed: no confirmed date yet
+  const filedRows = d.filed?.rows || [];
+  for (const row of filedRows) {
+    ipos.push({
+      id:        row.dealID,
+      name:      row.companyName || '',
+      ticker:    row.proposedTickerSymbol || '—',
+      exchange:  '',
+      date:      null,
+      status:    'filed',
+      priceRange: null,
+      offerAmt:  row.dollarValueOfSharesOffered || null,
+      shares:    null,
+      category:  detectCategory(row.companyName),
+    });
+  }
+
+  return ipos;
+}
+
+async function fetchAllIPOs() {
+  const months = getMonths();
+  const results = await Promise.allSettled(months.map(m => fetchMonth(m)));
 
   const seen = new Set();
-  const articles = [];
+  const ipos = [];
 
-  for (const result of results) {
-    if (result.status !== 'fulfilled') continue;
-    for (const hit of result.value) {
-      if (!hit.objectID || seen.has(hit.objectID)) continue;
-      if (!hit.title) continue;
-      if (!isIpoRelevant(hit)) continue; // only IPO-relevant articles
-      seen.add(hit.objectID);
-      const cat = detectCategory(hit);
-      articles.push({
-        id:       hit.objectID,
-        title:    hit.title,
-        url:      hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
-        hnUrl:    `https://news.ycombinator.com/item?id=${hit.objectID}`,
-        points:   hit.points || 0,
-        comments: hit.num_comments || 0,
-        time:     hit.created_at_i,
-        author:   hit.author || '',
-        domain:   hit.url ? extractDomain(hit.url) : 'news.ycombinator.com',
-        category: cat,
-      });
+  for (const r of results) {
+    if (r.status !== 'fulfilled') continue;
+    for (const ipo of parseResponse(r.value)) {
+      if (!ipo.id || seen.has(ipo.id) || !ipo.name) continue;
+      seen.add(ipo.id);
+      ipos.push(ipo);
     }
   }
 
-  // Sort by points descending
-  articles.sort((a, b) => b.points - a.points);
-  return articles;
-}
+  // Sort: upcoming by date asc, then filed
+  ipos.sort((a, b) => {
+    if (a.date && b.date) return a.date - b.date;
+    if (a.date) return -1;
+    if (b.date) return 1;
+    return 0;
+  });
 
-function extractDomain(url) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    return '';
-  }
+  return ipos;
 }
 
 /* ── Cache ─────────────────────────────────────────────────────────── */
-function saveCache(articles) {
+function saveCache(ipos) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), articles }));
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      ts: Date.now(),
+      ipos: ipos.map(i => ({ ...i, date: i.date?.toISOString() ?? null })),
+    }));
   } catch {}
 }
 
@@ -192,86 +182,98 @@ function loadCache() {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
-    const { ts, articles } = JSON.parse(raw);
+    const { ts, ipos } = JSON.parse(raw);
     if (Date.now() - ts > CACHE_TTL) return null;
-    return articles;
-  } catch {
-    return null;
-  }
+    return ipos.map(i => ({ ...i, date: i.date ? new Date(i.date) : null }));
+  } catch { return null; }
 }
 
 /* ── Render ─────────────────────────────────────────────────────────── */
 function renderFilters() {
   $filters.innerHTML = '';
   for (const cat of CATEGORIES) {
-    const count = cat.id === 'all'
-      ? allArticles.length
-      : allArticles.filter(a => a.category.id === cat.id).length;
-
+    let count;
+    switch (cat.id) {
+      case 'all':      count = allIPOs.length; break;
+      case 'ai':       count = allIPOs.filter(i => i.category === 'ai').length; break;
+      case 'robotics': count = allIPOs.filter(i => i.category === 'robotics').length; break;
+      case 'soon':     count = allIPOs.filter(i => i.date && daysUntil(i.date) <= 7).length; break;
+      case 'filed':    count = allIPOs.filter(i => i.status === 'filed').length; break;
+      default:         count = 0;
+    }
     const btn = document.createElement('button');
     btn.className = `filter-btn${cat.id === activeCategory ? ' active' : ''}`;
-    btn.dataset.id = cat.id;
     btn.innerHTML = `${cat.label} <span class="count">${count}</span>`;
-    btn.addEventListener('click', () => {
-      activeCategory = cat.id;
-      renderFilters();
-      renderGrid();
-    });
+    btn.addEventListener('click', () => { activeCategory = cat.id; renderFilters(); renderGrid(); });
     $filters.appendChild(btn);
   }
 }
 
-function renderCard(article) {
+function countdownInfo(days) {
+  if (days === null) return { text: 'Date TBD', cls: 'countdown-tbd' };
+  if (days < 0)      return { text: 'Passed',   cls: 'countdown-far' };
+  if (days === 0)    return { text: '🔥 TODAY',  cls: 'countdown-hot' };
+  if (days === 1)    return { text: '🔥 Tomorrow', cls: 'countdown-hot' };
+  if (days <= 7)     return { text: `🔥 ${days} days`, cls: 'countdown-hot' };
+  if (days <= 30)    return { text: `${days} days`,  cls: 'countdown-soon' };
+  return               { text: `${days} days`,        cls: 'countdown-far' };
+}
+
+function renderCard(ipo) {
+  const days = daysUntil(ipo.date);
+  const { text: cdText, cls: cdCls } = countdownInfo(days);
+  const cat = CATEGORIES.find(c => c.id === ipo.category) || CATEGORIES[0];
+
   const card = document.createElement('article');
   card.className = 'card';
-  card.style.animationDelay = `${Math.random() * 0.15}s`;
+  card.style.animationDelay = `${Math.random() * 0.12}s`;
+
+  const metas = [
+    ipo.exchange   ? `<span class="meta-chip">${escapeHtml(ipo.exchange)}</span>`   : '',
+    ipo.priceRange ? `<span class="meta-chip">$${escapeHtml(ipo.priceRange)}</span>` : '',
+    ipo.offerAmt && ipo.offerAmt.trim() ? `<span class="meta-chip">${escapeHtml(ipo.offerAmt)}</span>` : '',
+  ].join('');
 
   card.innerHTML = `
     <div class="card-top">
-      <span class="card-badge ${article.category.badgeClass}">${article.category.badgeText}</span>
-      <span class="card-time">${timeAgo(article.time)}</span>
+      <span class="card-badge ${cat.badgeClass}">${cat.badgeText}</span>
+      <span class="card-ticker">${escapeHtml(ipo.ticker)}</span>
     </div>
-    <div class="card-title">
-      <a href="${article.url}" target="_blank" rel="noopener">${escapeHtml(article.title)}</a>
-    </div>
-    <div class="card-meta">
-      <span class="meta-item">
+    <div class="card-date-row">
+      <div class="card-date">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
-          <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
         </svg>
-        ${article.points}
-      </span>
-      <a class="meta-item card-comments-link" href="${article.hnUrl}" target="_blank" rel="noopener">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-        ${article.comments}
-      </a>
-      <span class="card-source">${escapeHtml(article.domain)}</span>
+        ${ipo.date ? formatDate(ipo.date) : 'Date pending'}
+      </div>
+      <span class="countdown ${cdCls}">${cdText}</span>
     </div>
+    <div class="card-title">${escapeHtml(ipo.name)}</div>
+    ${metas ? `<div class="card-meta">${metas}</div>` : ''}
   `;
   return card;
 }
 
 function renderGrid() {
-  let articles = allArticles;
-
-  // Category filter
-  if (activeCategory !== 'all') {
-    articles = articles.filter(a => a.category.id === activeCategory);
+  let ipos = allIPOs;
+  switch (activeCategory) {
+    case 'ai':       ipos = ipos.filter(i => i.category === 'ai');                break;
+    case 'robotics': ipos = ipos.filter(i => i.category === 'robotics');           break;
+    case 'soon':     ipos = ipos.filter(i => i.date && daysUntil(i.date) <= 7);   break;
+    case 'filed':    ipos = ipos.filter(i => i.status === 'filed');                break;
   }
-
-  // Search filter
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
-    articles = articles.filter(a =>
-      a.title.toLowerCase().includes(q) ||
-      a.domain.toLowerCase().includes(q)
+    ipos = ipos.filter(i =>
+      i.name.toLowerCase().includes(q) || i.ticker.toLowerCase().includes(q)
     );
   }
 
-  if (articles.length === 0) {
+  $articleCount.textContent = `${ipos.length} IPO${ipos.length !== 1 ? 's' : ''}`;
+
+  if (ipos.length === 0) {
     $grid.classList.add('hidden');
     $noResults.classList.remove('hidden');
     $noQuery.textContent = searchQuery || CATEGORIES.find(c => c.id === activeCategory)?.label || '';
@@ -279,14 +281,12 @@ function renderGrid() {
     $noResults.classList.add('hidden');
     $grid.classList.remove('hidden');
     $grid.innerHTML = '';
-    articles.forEach(a => $grid.appendChild(renderCard(a)));
+    ipos.forEach(i => $grid.appendChild(renderCard(i)));
   }
-
-  $articleCount.textContent = `${articles.length} article${articles.length !== 1 ? 's' : ''}`;
 }
 
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function escapeHtml(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /* ── Load ──────────────────────────────────────────────────────────── */
@@ -296,12 +296,12 @@ async function load(forceRefresh = false) {
 
   if (!forceRefresh) {
     const cached = loadCache();
-    if (cached && cached.length > 0) {
-      allArticles = cached;
-      renderFilters();
-      renderGrid();
+    if (cached?.length > 0) {
+      allIPOs = cached;
       $loading.classList.add('hidden');
       $grid.classList.remove('hidden');
+      renderFilters();
+      renderGrid();
       $lastUpdated.textContent = `Cached · refreshes at ${formatNow()}`;
       $refreshBtn.classList.remove('spinning');
       scheduleRefresh();
@@ -309,30 +309,31 @@ async function load(forceRefresh = false) {
     }
   }
 
-  show($loading);
+  $loading.classList.remove('hidden');
+  $grid.classList.add('hidden');
 
   try {
-    allArticles = await fetchAllNews();
-    saveCache(allArticles);
+    allIPOs = await fetchAllIPOs();
+    saveCache(allIPOs);
     $loading.classList.add('hidden');
+    $grid.classList.remove('hidden');
     renderFilters();
     renderGrid();
     $lastUpdated.textContent = `Updated ${formatNow()}`;
   } catch (err) {
     console.error(err);
     $loading.classList.add('hidden');
-    if (allArticles.length === 0) {
-      show($error);
+    if ($errorMsg) $errorMsg.textContent = err.message;
+    if (allIPOs.length === 0) {
+      $error.classList.remove('hidden');
     } else {
-      $lastUpdated.textContent = `Refresh failed — showing cached data`;
+      $lastUpdated.textContent = `Refresh failed — showing cached`;
     }
   } finally {
     $refreshBtn.classList.remove('spinning');
     scheduleRefresh();
   }
 }
-
-function show(el) { el.classList.remove('hidden'); }
 
 function scheduleRefresh() {
   clearTimeout(refreshTimer);
@@ -341,16 +342,12 @@ function scheduleRefresh() {
 
 /* ── Events ─────────────────────────────────────────────────────────── */
 $refreshBtn.addEventListener('click', () => load(true));
-
 document.getElementById('retry-btn').addEventListener('click', () => load(true));
 
 let searchDebounce;
 $search.addEventListener('input', () => {
   clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(() => {
-    searchQuery = $search.value.trim();
-    renderGrid();
-  }, 250);
+  searchDebounce = setTimeout(() => { searchQuery = $search.value.trim(); renderGrid(); }, 250);
 });
 
 /* ── Init ───────────────────────────────────────────────────────────── */

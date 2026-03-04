@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI & Robotics IPO Tracker</title>
+  <title>Upcoming AI & Robotics IPOs</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -15,8 +15,8 @@
       <div class="logo">
         <div class="logo-icon">IPO</div>
         <div class="logo-text">
-          <h1>AI & Robotics IPO Tracker</h1>
-          <span class="logo-sub">Powered by Hacker News</span>
+          <h1>Upcoming AI & Robotics IPOs</h1>
+          <span class="logo-sub">Powered by Nasdaq IPO Calendar</span>
         </div>
       </div>
       <div class="header-actions">
@@ -24,7 +24,7 @@
           <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input id="search" type="text" placeholder="Search IPO news…" autocomplete="off" />
+          <input id="search" type="text" placeholder="Search company or ticker…" autocomplete="off" />
         </div>
         <button id="refresh-btn" class="icon-btn" title="Refresh">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -48,12 +48,14 @@
 
     <div id="loading" class="loading">
       <div class="spinner"></div>
-      <p>Fetching AI & Robotics IPO news…</p>
+      <p>Loading upcoming IPO calendar…</p>
     </div>
 
     <div id="error" class="error hidden">
       <div class="error-icon">⚠</div>
-      <p>Failed to load news.</p>
+      <p>Failed to load IPO data. Make sure you're running via <strong>Vercel</strong>.</p>
+      <p class="error-sub">Open <a href="https://ai-news-pink.vercel.app" target="_blank">ai-news-pink.vercel.app</a> or run <code>vercel dev</code> locally.</p>
+      <p id="error-msg" class="error-detail"></p>
       <button id="retry-btn" class="retry-btn">Try Again</button>
     </div>
 
@@ -65,7 +67,7 @@
   </main>
 
   <footer>
-    <p>Auto-refreshes every 30 min &middot; Data from <a href="https://news.ycombinator.com" target="_blank" rel="noopener">Hacker News</a></p>
+    <p>Auto-refreshes hourly &middot; Data from <a href="https://www.nasdaq.com/market-activity/ipos" target="_blank" rel="noopener">Nasdaq IPO Calendar</a> &middot; Only future IPOs shown</p>
   </footer>
 
   <script src="app.js"></script>
